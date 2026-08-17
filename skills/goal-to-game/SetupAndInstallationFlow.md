@@ -195,6 +195,62 @@ of the two would go stale, and the stale one would be quoting prices.
 
 SKILL.md decides WHICH engine. This section only installs it, once per machine.
 
+### Roblox Studio Installation
+
+Roblox Studio is the source of truth for import, playtesting, screenshots, and publishing.
+Use **Rojo** for reproducible source-to-place builds and **Python 3** for the local evidence collector.
+
+#### Windows PowerShell
+
+Install Roblox Studio from the official Roblox Creator site, then install Rojo through Rokit:
+
+```powershell
+Invoke-RestMethod https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.ps1 | Invoke-Expression
+rokit init
+rokit add rojo-rbx/rojo@7.6.1
+python --version
+rojo --version
+```
+
+#### macOS
+
+Install Roblox Studio from the official Roblox Creator site, then:
+
+```bash
+curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash
+rokit init
+rokit add rojo-rbx/rojo@7.6.1
+python3 --version
+rojo --version
+```
+
+#### Linux / WSL
+
+Roblox Studio is not supported natively here. Linux/WSL can prepare source and run Python
+validation, but the import/playtest/publish/evidence gate must run in Roblox Studio on a Windows
+or macOS host.
+
+```bash
+curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash
+rokit init
+rokit add rojo-rbx/rojo@7.6.1
+python3 --version
+rojo --version
+```
+
+**Hard stop:** if Roblox Studio is unavailable on Windows/macOS, stop before claiming the game has
+been imported, visually verified, performance-tested, or published.
+
+For the evidence bridge, start the collector in the project root before running the Studio plugin:
+
+```bash
+python skills/goal-to-game/engines/roblox/tools/evidence_collector.py \
+  --output evidence/roblox-run
+```
+
+The Studio plugin talks only to `127.0.0.1`. Studio may prompt once for permission for that local
+address. Never expose the collector on a public network interface.
+
 ### Unity Installation
 
 #### Install Unity CLI to allow agents to control Unity
