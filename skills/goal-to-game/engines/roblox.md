@@ -15,7 +15,9 @@ A Roblox build is not complete because Luau parses or a `.rbxlx` file exists. Be
 3. Inspect the generated model before grouping. Copy exact moving-part names into `keep_groups`.
 4. Make every final Roblox `MeshPart` satisfy the current Roblox import constraints before import.
 5. Import into Studio and audit the **actual imported instances**, not a guessed manifest.
-6. Run the verification plugin and preserve the collector's SHA-256 evidence ledger.
+6. Run the Roblox Studio MCP self-check and six-view capture workflow. Then run the localhost
+   verifier as the secondary deterministic audit/failure-evidence path and preserve its SHA-256
+   ledger.
 7. Playtest the game and measure both desktop and mobile-sized viewport runs.
 8. Publish only at the user's Roblox-account authorization boundary.
 9. For a bounty/review build, provide public playable URL, video, tested versions, and real evidence.
@@ -114,25 +116,51 @@ The minimum review bar is 30 FPS on the tested mobile-sized viewport. Record the
 sampling window, average/minimum FPS, instance count, MeshPart count, and moving-part count. Do not
 claim a device result when the test was only a resized desktop Studio viewport; label it exactly.
 
-## Verification: evidence must come from Studio
+## Verification: Studio MCP first, localhost audit second
 
-Use [roblox/plugin/GoalToGameVerifier.plugin.lua](roblox/plugin/GoalToGameVerifier.plugin.lua)
-with [roblox/tools/evidence_collector.py](roblox/tools/evidence_collector.py).
+Roblox Studio MCP is the primary agent self-checking and screenshot path. It inspects the actual
+open place and can capture the visible Studio viewport even when the plugin-only capture API is not
+available in that Studio build.
 
-The plugin:
+Use this read-only MCP workflow before claiming verification:
 
-- audits `Workspace/ThrixelAssets`;
-- records actual imported MeshIds and `SurfaceAppearance` maps;
-- verifies moving-part tags;
-- captures six repeatable camera views through `StudioCaptureService`;
-- sends capture bytes and audit JSON to `127.0.0.1`.
+1. Call `list_roblox_studios` and select the intended open place by its returned ID and name. Ask
+   before any modification if more than one place could be the target.
+2. Call `get_studio_state` and verify the expected DataModel is available. Inspection should normally
+   target `Edit`; do not change play state merely to make a structural audit pass.
+3. Use `search_game_tree` on `Workspace`, then `inspect_instance` on
+   `Workspace.ThrixelAssets`, each asset root, and required moving groups. Confirm real hierarchy,
+   `GoalToGameAsset`, `GoalToGameMovingPart`, and child classes.
+4. Use `execute_luau` only for read-only validation that the inspection tools cannot aggregate
+   conveniently. A suitable query finds the asset with `FindFirstChild`, walks `GetDescendants()`,
+   counts `MeshPart` instances, checks `MeshId == ""`, and reads attributes with `GetAttribute`.
+   It must not assign properties, create/destroy instances, change selection/camera, or save/publish.
+5. Use `screen_capture` for visual verification and preserve the returned real image. Never create a
+   substitute image when Studio capture is unavailable.
 
-The collector:
+The six-view evidence requirement remains mandatory: `front`, `rear`, `left`, `right`, `top`, and
+`gameplay`. For the five orthographic-style asset views, use a read-only `execute_luau` query to
+return the asset bounding-box center and size, calculate camera and look-at coordinates outside
+Studio, and call `screen_capture` once per view with `camera_position`, `look_at_position`, and a
+matching `capture_id`. Use opposite Z offsets for `front`/`rear`, opposite X offsets for
+`left`/`right`, and a positive Y offset for `top`. For `gameplay`, capture the actual tested gameplay
+viewport from a useful three-quarter/player perspective; do not relabel an asset-only view as
+gameplay. Preserve each returned image under its matching evidence name and restore/leave the user's
+viewport state as agreed. The tool's temporary capture framing is not permission to persist a camera
+change in the place.
 
-- writes artifacts to disk;
-- rejects path traversal and oversized payloads;
-- hashes every artifact with SHA-256;
-- writes an append-only JSONL ledger.
+The localhost verifier/collector remains the secondary deterministic audit and failure-evidence
+path. Use [roblox/plugin/GoalToGameVerifier.plugin.lua](roblox/plugin/GoalToGameVerifier.plugin.lua)
+with [roblox/tools/evidence_collector.py](roblox/tools/evidence_collector.py). It audits actual
+imported MeshIds, material maps, attributes, collision/render settings, and writes `studio-audit.json`.
+It also attempts the same six views through `StudioCaptureService`; every accepted artifact is
+hashed into an append-only JSONL ledger. The collector binds to `127.0.0.1`, rejects traversal and
+oversized payloads, and preserves `capture-failure.json` when plugin capture fails.
+
+`StudioCaptureService:RequestScreenshotPermissionAsync()` may raise
+`Feature not supported yet.` in some Studio builds. This is a plugin capture limitation, not proof
+that MCP `screen_capture` is unavailable. Preserve the audit and capture-failure record, then use the
+primary MCP screenshot path. Never treat `StudioCaptureService` as the only screenshot mechanism.
 
 Run:
 
@@ -143,6 +171,20 @@ python skills/goal-to-game/engines/roblox/tools/evidence_collector.py \
 
 Then run the plugin's **Audit + Capture** action in Studio.
 
+Generate an ignored, token-configured runtime copy from the tracked template; do not globally
+replace the placeholder or install the tracked source directly for a collector run:
+
+```bash
+python skills/goal-to-game/engines/roblox/tools/inject_collector_token.py "<SESSION_TOKEN>" \
+  --output .roblox-evidence-runtime/GoalToGameVerifier.session.lua
+```
+
+The default output is the same `.roblox-evidence-runtime/GoalToGameVerifier.session.lua` path, which
+is ignored by Git. The helper never edits the tracked `GoalToGameVerifier.plugin.lua`, refuses to use
+that source as `--output`, changes only the marked `TOKEN` assignment in the generated copy, and does
+not print the token. The immutable `TOKEN_PLACEHOLDER` safety assertion remains unchanged. Install or
+paste the generated runtime copy into Studio for that session, then remove it when the run is done.
+
 Finally:
 
 ```bash
@@ -151,8 +193,8 @@ python skills/goal-to-game/engines/roblox/tools/validate_evidence.py \
   --require-views front rear left right top gameplay
 ```
 
-If the plugin cannot capture or localhost permission is denied, say exactly which evidence is
-missing. Do not synthesize screenshots or manufacture a passing JSON file.
+If either screenshot route cannot capture, say exactly which views are missing. Do not synthesize
+screenshots, reuse one view under several names, or manufacture a passing JSON file.
 
 ## Failure behavior
 
@@ -163,8 +205,9 @@ Hard-stop and explain the exact boundary when:
 - grouping cannot preserve a required moving part;
 - imported MeshIds cannot be resolved/verified;
 - moderation blocks visual verification;
-- the evidence collector is not reachable;
-- Studio screenshot permission is denied;
+- both MCP inspection and inspection of the real imported instances are unavailable;
+- a required six-view image remains missing after trying MCP `screen_capture` and recording the
+  secondary plugin failure;
 - performance is below the target after reasonable optimization.
 
 A failed verification is useful evidence. Preserve it, fix the cause, and rerun.

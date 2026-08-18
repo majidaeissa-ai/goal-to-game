@@ -39,10 +39,31 @@ re-upload loops.
 A Studio viewport resized to a mobile resolution is useful, but it is not a physical-device benchmark.
 Label it `mobile-sized Studio viewport` unless a real device was used.
 
-## Screenshot automation needs permission
+## StudioCaptureService is not the only screenshot path
 
-Studio capture APIs are permissioned for plugins. A denied permission is a hard evidence gap, not a
-reason to substitute fabricated images.
+Roblox Studio MCP `screen_capture` is the primary agent screenshot mechanism. The secondary plugin's
+`StudioCaptureService:RequestScreenshotPermissionAsync()` can return `Feature not supported yet.`
+in some Studio builds. Preserve `studio-audit.json` and `capture-failure.json`, try the MCP path, and
+report any view still missing. Never fabricate a screenshot, duplicate one capture under six names,
+or turn a failure record into a passing claim.
+
+## MCP checks must remain read-only
+
+Use `list_roblox_studios`, `get_studio_state`, `search_game_tree`, and `inspect_instance` before a
+read-only `execute_luau` aggregation. Reading descendants, MeshIds, and attributes is acceptable;
+assigning properties, changing the camera, creating instances, saving, or publishing is not part of
+a self-check. Use `screen_capture` with temporary framing for the required front, rear, left, right,
+top, and real gameplay views, and preserve only images actually returned by Studio.
+
+## Global token replacement disables the guard
+
+The collector placeholder also protects the plugin's safety assertion. Never globally replace its
+text or inject a session secret into tracked `GoalToGameVerifier.plugin.lua`. Run
+`tools/inject_collector_token.py` to create the ignored
+`.roblox-evidence-runtime/GoalToGameVerifier.session.lua` copy. Install/paste that generated copy for
+the session. The generator refuses the tracked source as its output, changes only the marked `TOKEN`
+assignment in the copy, leaves `TOKEN_PLACEHOLDER` in the assertion intact, and never prints the
+token.
 
 ## Local collector should stay local
 

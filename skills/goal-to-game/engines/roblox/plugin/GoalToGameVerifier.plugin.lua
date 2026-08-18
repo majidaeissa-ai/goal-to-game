@@ -1,5 +1,6 @@
--- Goal-to-Game Roblox verification plugin.
--- Requires a localhost evidence collector. Configure TOKEN before a bounty evidence run.
+-- Goal-to-Game secondary deterministic audit/failure-evidence plugin.
+-- Roblox Studio MCP is the primary self-check and screenshot path. This plugin preserves a
+-- localhost audit ledger and attempts StudioCaptureService captures when that API is supported.
 
 local HttpService = game:GetService("HttpService")
 local StudioCaptureService = game:GetService("StudioCaptureService")
@@ -7,7 +8,8 @@ local EncodingService = game:GetService("EncodingService")
 local Workspace = game:GetService("Workspace")
 
 local PORT = 43119
-local TOKEN = "REPLACE_WITH_COLLECTOR_SESSION_TOKEN"
+local TOKEN_PLACEHOLDER = "REPLACE_WITH_COLLECTOR_SESSION_TOKEN"
+local TOKEN = TOKEN_PLACEHOLDER -- GOAL_TO_GAME_TOKEN_ASSIGNMENT
 local BASE = ("http://127.0.0.1:%d"):format(PORT)
 
 local toolbar = plugin:CreateToolbar("Goal to Game")
@@ -18,7 +20,7 @@ local button = toolbar:CreateButton(
 )
 
 local function request(path, payload)
-    assert(TOKEN ~= "REPLACE_WITH_COLLECTOR_SESSION_TOKEN", "Set TOKEN from evidence_collector.py")
+    assert(TOKEN ~= TOKEN_PLACEHOLDER, "Set TOKEN with inject_collector_token.py")
     local response = HttpService:RequestAsync({
         Url = BASE .. path,
         Method = "POST",
@@ -36,6 +38,39 @@ end
 local function contentString(value)
     local ok, s = pcall(function() return tostring(value) end)
     return ok and s or ""
+end
+
+local function stageError(stage, detail)
+    error(("[%s] %s"):format(stage, contentString(detail)), 0)
+end
+
+local function stageCall(stage, callback)
+    local results = table.pack(pcall(callback))
+    if not results[1] then
+        stageError(stage, results[2])
+    end
+    return table.unpack(results, 2, results.n)
+end
+
+local function recordCaptureFailure(stage, detail)
+    local ok, err = pcall(function()
+        request("/v1/record", {
+            name = "capture-failure",
+            record = {
+                schema = "goal-to-game-roblox-capture-failure-v1",
+                capturedAtUnix = os.time(),
+                stage = stage,
+                error = contentString(detail),
+                screenshotsComplete = false,
+            },
+        })
+    end)
+    if not ok then
+        stageError("collector-record", ("could not record %s failure: %s"):format(
+            stage, contentString(err)
+        ))
+    end
+    stageError(stage, detail)
 end
 
 local function audit()
@@ -127,35 +162,76 @@ local function captureOne(name, position, target)
     camera.CFrame = CFrame.lookAt(position, target)
     task.wait(0.35)
 
-    local shot = StudioCaptureService:CaptureScreenshot({
-        UICaptureMode = Enum.UICaptureMode.None,
-        ScreenshotFormat = Enum.StudioCaptureScreenshotFormat.PNG,
-    })
-    local errors = shot:GetErrors()
-    assert(#errors == 0, "capture returned errors")
-    assert(shot.BufferFormat == Enum.StudioCaptureScreenshotFormat.PNG,
-        "capture was not returned as PNG")
+    local shot = stageCall("CaptureScreenshot", function()
+        return StudioCaptureService:CaptureScreenshot({
+            UICaptureMode = Enum.UICaptureMode.None,
+            ScreenshotFormat = Enum.StudioCaptureScreenshotFormat.PNG,
+        })
+    end)
+    local errors = stageCall("CaptureScreenshot", function() return shot:GetErrors() end)
+    if #errors > 0 then
+        local messages = {}
+        for _, captureError in ipairs(errors) do
+            table.insert(messages, contentString(captureError))
+        end
+        stageError("CaptureScreenshot", "capture returned errors: " .. table.concat(messages, "; "))
+    end
+    if shot.BufferFormat ~= Enum.StudioCaptureScreenshotFormat.PNG then
+        stageError("CaptureScreenshot", "capture was not returned as PNG")
+    end
 
-    local encoded = EncodingService:Base64Encode(shot:GetBuffer())
-    request("/v1/capture", {
-        name = name,
-        format = "PNG",
-        base64 = buffer.tostring(encoded),
-        resolution = {shot.Resolution.X, shot.Resolution.Y},
-    })
+    local pixels = stageCall("GetBuffer", function() return shot:GetBuffer() end)
+    local base64 = stageCall("Base64Encode", function()
+        return buffer.tostring(EncodingService:Base64Encode(pixels))
+    end)
+    stageCall("collector-capture", function()
+        request("/v1/capture", {
+            name = name,
+            format = "PNG",
+            base64 = base64,
+            resolution = {shot.Resolution.X, shot.Resolution.Y},
+        })
+    end)
 end
 
 local function run()
-    assert(StudioCaptureService:CanCaptureScreenshot()
-        or StudioCaptureService:RequestScreenshotPermissionAsync(),
-        "Studio screenshot permission was not granted")
+    local a = stageCall("audit", audit)
+    stageCall("collector-record", function()
+        request("/v1/record", {name = "studio-audit", record = a})
+    end)
+    if #a.errors > 0 then
+        stageError("audit", "Studio audit contains errors; inspect collector output")
+    end
 
-    local a = audit()
-    request("/v1/record", {name = "studio-audit", record = a})
-    assert(#a.errors == 0, "Studio audit contains errors; inspect collector output")
+    local canCaptureOk, canCapture = pcall(function()
+        return StudioCaptureService:CanCaptureScreenshot()
+    end)
+    if not canCaptureOk then
+        recordCaptureFailure("CanCaptureScreenshot", canCapture)
+    end
 
-    local container = assert(Workspace:FindFirstChild("ThrixelAssets"))
-    local center, size = bounds(container)
+    if not canCapture then
+        local permissionOk, permissionGranted = pcall(function()
+            return StudioCaptureService:RequestScreenshotPermissionAsync()
+        end)
+        if not permissionOk then
+            recordCaptureFailure("RequestScreenshotPermissionAsync", permissionGranted)
+        end
+        if not permissionGranted then
+            recordCaptureFailure(
+                "RequestScreenshotPermissionAsync",
+                "Studio screenshot permission was not granted"
+            )
+        end
+    end
+
+    local center, size = stageCall("audit", function()
+        local container = assert(
+            Workspace:FindFirstChild("ThrixelAssets"),
+            "Workspace.ThrixelAssets is missing"
+        )
+        return bounds(container)
+    end)
     local span = math.max(size.X, size.Y, size.Z, 12)
     local d = span * 1.35
 
@@ -168,7 +244,11 @@ local function run()
         gameplay = center + Vector3.new(d * 0.72, span * 0.38, d * 0.72),
     }
     for name, pos in pairs(views) do
-        captureOne(name, pos, center)
+        local ok, err = pcall(function() captureOne(name, pos, center) end)
+        if not ok then
+            local stage = contentString(err):match("^%[([^%]]+)%]") or "CaptureScreenshot"
+            recordCaptureFailure(stage, err)
+        end
     end
 
     print("[GoalToGame] evidence audit and captures sent to local collector")
