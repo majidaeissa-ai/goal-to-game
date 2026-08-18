@@ -78,7 +78,16 @@ path, and measured independent rotor, trolley, and hoist transform changes with 
 Only the four tagged temporary test models were then removed; the existing Signal Below asset was
 preserved.
 
-The connected place remains unpublished. Actual final GLB import, the post-import instance audit,
-six-view evidence, longer desktop/mobile performance captures, playable URL, and gameplay video
-still require the Studio/account-bound finishing pass. No screenshot, public URL, video, or
-publication is claimed here.
+The final four Thrixel GLBs were then imported through Studio into `Workspace.ThrixelAssets` with
+the required roots: `EmergencyPowerCellCarrier`, `CargoDrone`, `FreightGantry`, and
+`DeliveryTerminal`. The post-import audit found 1, 5, 3, and 1 MeshParts respectively; every
+MeshPart had a non-empty Roblox mesh ID and a `SurfaceAppearance`. The drone retained all four
+rotor groups, and the gantry retained its `Trolley` and `Hoist` groups. A connected Play test with
+these final models created all four real runtime assets. Over a 0.35-second sample, each rotor
+changed orientation by about 2.798 radians without translating, while the trolley and hoist moved
+about 0.550 and 0.220 studs. The Play console was empty. The place was saved locally as
+`Place1.rbxl` after the audit.
+
+The connected place remains unpublished. Six-view evidence, longer desktop/mobile performance
+captures, a public playable URL, and a gameplay video still require the Studio/account-bound
+finishing pass. No public URL, video, or publication is claimed here.
