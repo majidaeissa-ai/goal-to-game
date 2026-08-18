@@ -88,6 +88,10 @@ changed orientation by about 2.798 radians without translating, while the trolle
 about 0.550 and 0.220 studs. The Play console was empty. The place was saved locally as
 `Place1.rbxl` after the audit.
 
-The connected place remains unpublished. Six-view evidence, longer desktop/mobile performance
-captures, a public playable URL, and a gameplay video still require the Studio/account-bound
-finishing pass. No public URL, video, or publication is claimed here.
+The connected place was published privately as Roblox place `96184978301089` in universe
+`10736446973`, and its content-maturity questionnaire returned `Minimal` with no descriptors or
+region restrictions. Public access remains blocked by Roblox's account-age publishing requirement:
+the owning account was created on 2026-08-17 at 03:02:40 UTC and is not banned, so its two-day
+eligibility window cannot complete before 2026-08-19 at approximately 03:03 UTC. Six-view evidence,
+longer desktop/mobile performance captures, a public playable URL, and a gameplay video remain
+pending. No public URL or video is claimed here.
