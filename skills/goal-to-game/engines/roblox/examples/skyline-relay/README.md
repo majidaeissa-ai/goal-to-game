@@ -22,30 +22,35 @@ on a completed or failed delivery.
 
 Rojo maps only authored scripts. At Play start, server code builds `Workspace.SkylineRelayRuntime`
 with seven rooftop towers, six sloped skybridges, checkpoint touch volumes, route lights, a fall
-reset plane, SpawnLocation, skyline lighting, and explicit Thrixel placeholders. Checkpoint order,
-timers, retry eligibility, completion times, and best times are server-authoritative; the client
-only renders the local HUD and local checkpoint colors.
+reset plane, SpawnLocation, skyline lighting, and the four imported Thrixel models when they exist
+under `Workspace.ThrixelAssets`. Missing imports fall back to explicit labelled placeholders instead
+of failing the round. The real power-cell carrier is fitted and welded to each player; drone rotors,
+the gantry trolley, and the gantry hoist animate as independent parts. Checkpoint order, timers,
+retry eligibility, completion times, and best times are server-authoritative; the client only
+renders the local HUD and local checkpoint colors.
 
 In Studio, `Workspace.SkylineRelayRuntime.StudioTestControl` accepts `Checkpoint`, `Fail`, and
 `Reset` commands for deterministic local play checks. It exists only while running in Studio.
 
-## Ranked Thrixel asset plan
+## Thrixel asset set
 
-No cubes should be spent without explicit user authorization. Until the required Thrixel flow is
-available and authorized, the four most visible missing assets are placed in the course as purple,
-labelled blocks with `GoalToGamePlaceholder=true`:
+The authorized generation run created a dedicated Thrixel project, `Skyline Relay`
+(`b8ae85a7-2f87-458b-950b-3c6c90eeb2d7`), and produced the four ranked hero props. Each source was
+visually inspected and refined; the moving assets went through Architect, a focused edit, Detailer
+at adherence 9, a material pass, and grouping that preserves exact moving nodes. Static props used
+Sculptor, a focused material pass, and grouping. Final GLBs and the complete identifier chain are in
+[`assets/thrixel`](assets/thrixel).
 
-1. `EmergencyPowerCellCarrier` — hero delivery pack with emissive cell and harness.
-2. `CargoDrone` — rooftop logistics drone with independently moving rotors.
-3. `FreightGantry` — industrial loading frame with an independently moving hoist.
-4. `DeliveryTerminal` — final emergency-grid receiver and control console.
-5. Modular rooftop service cores and access housings.
-6. Solar arrays, HVAC clusters, vents, and cable trays.
-7. Neon district signage, barriers, and parcel props.
+Import each final GLB through Studio's 3D Importer under `Workspace.ThrixelAssets`, enable
+**Import Only as a Model**, and name the resulting root exactly as listed:
 
-Before replacing any block, inspect the generated model, preserve exact moving-part node names in
-`keep_groups`, validate Roblox mesh limits, import through Studio under `Workspace.ThrixelAssets`,
-tag real asset and moving-part attributes, and audit the actual imported instances.
+1. `emergency-power-cell-carrier.glb` → `EmergencyPowerCellCarrier`
+2. `cargo-drone.glb` → `CargoDrone` (keeps `Rotor_FL`, `Rotor_FR`, `Rotor_RL`, `Rotor_RR`)
+3. `freight-gantry.glb` → `FreightGantry` (keeps `Trolley`, `Hoist`)
+4. `delivery-terminal.glb` → `DeliveryTerminal`
+
+The runtime marks clones with `GoalToGameAsset=true` and the animation system marks each discovered
+moving node with `GoalToGameMovingPart=true`. Do not rename those moving nodes after import.
 
 ## Run with Rojo
 
@@ -59,15 +64,21 @@ Verification on 2026-08-18: all four authored Luau files compiled successfully i
 byte hashes matched the repository sources, `git diff --check` passed, and all 10 Roblox
 evidence-tool unit tests passed. A connected Studio Play session verified the initial HUD and cargo,
 out-of-order checkpoint rejection, all seven ordered transitions, physical checkpoint contact,
-delivery, controlled failure, and the real retry-button reset after both end states. The runtime
-console was empty. A five-second desktop sample at a 1120-pixel viewport measured 60.02 average FPS,
-51.93 minimum instantaneous FPS, and a 19.26 ms maximum frame; this is a short local sample, not a
-shipping-device benchmark. The narrow-viewport HUD layout was also checked in iPhone 17 Pro
-landscape during the connected test pass.
+delivery, controlled failure, and the real retry-button reset after both end states. The user also
+completed the full keyboard-driven route through checkpoint 07. The runtime console was empty. A
+five-second desktop sample at a 1120-pixel viewport measured 60.02 average FPS, 51.93 minimum
+instantaneous FPS, and a 19.26 ms maximum frame; this is a short local sample, not a shipping-device
+benchmark. The narrow-viewport HUD layout was also checked in iPhone 17 Pro landscape during the
+connected test pass.
 
-The test used the existing unsaved `Place1.rbxl` session and returned Studio to Edit mode without
-saving or publishing. The installed Rojo shim previously reported `home directory not found`, so no
-successful `.rbxlx` build is claimed. Skyline Relay still requires a complete keyboard-driven course
-traversal, a dedicated place, real Thrixel imports, comprehensive desktop/mobile performance runs,
-six-view evidence, and account-authorized publication/video. No screenshot, public URL, video, or
-publication is claimed.
+Rojo 7.6.1 successfully built dedicated Signal Below and Skyline Relay `.rbxlx` files on
+2026-08-18. A second connected Play test exercised the imported-asset branch with four temporary
+local models: it produced four runtime assets and zero placeholders, attached the real-asset cargo
+path, and measured independent rotor, trolley, and hoist transform changes with no console output.
+Only the four tagged temporary test models were then removed; the existing Signal Below asset was
+preserved.
+
+The connected place remains unpublished. Actual final GLB import, the post-import instance audit,
+six-view evidence, longer desktop/mobile performance captures, playable URL, and gameplay video
+still require the Studio/account-bound finishing pass. No screenshot, public URL, video, or
+publication is claimed here.

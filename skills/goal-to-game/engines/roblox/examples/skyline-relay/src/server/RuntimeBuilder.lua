@@ -170,6 +170,71 @@ local function addAssetPlaceholder(parent, name, position, size)
     billboard(block, "PlaceholderLabel", "THRIXEL PLACEHOLDER\n" .. string.upper(name), Vector3.new(0, size.Y / 2 + 1.8, 0), UDim2.fromOffset(260, 72))
 end
 
+local function cloneImportedAsset(name)
+    local library = workspace:FindFirstChild("ThrixelAssets")
+    local source = library and library:FindFirstChild(name)
+    if not source then
+        return nil
+    end
+
+    local clone = Instance.new("Model")
+    clone.Name = name
+    if source:IsA("Model") then
+        clone:Destroy()
+        clone = source:Clone()
+        clone.Name = name
+    elseif source:IsA("BasePart") then
+        source:Clone().Parent = clone
+    else
+        clone:Destroy()
+        return nil
+    end
+
+    clone:SetAttribute("GoalToGameAsset", true)
+    clone:SetAttribute("GoalToGamePlaceholder", nil)
+    clone:SetAttribute("ThrixelAssetName", name)
+    return clone
+end
+
+local function fitAndPlaceAsset(model, position, targetSize)
+    if not model:FindFirstChildWhichIsA("BasePart", true) then
+        return false
+    end
+    local _, sourceSize = model:GetBoundingBox()
+    if sourceSize.X <= 0 or sourceSize.Y <= 0 or sourceSize.Z <= 0 then
+        return false
+    end
+
+    local scale = math.min(targetSize.X / sourceSize.X, targetSize.Y / sourceSize.Y, targetSize.Z / sourceSize.Z)
+    model:ScaleTo(model:GetScale() * scale)
+    local boundsCFrame = model:GetBoundingBox()
+    model:PivotTo(model:GetPivot() + (position - boundsCFrame.Position))
+
+    for _, descendant in model:GetDescendants() do
+        if descendant:IsA("BasePart") then
+            descendant.Anchored = true
+            descendant.CanCollide = false
+            descendant.CanTouch = false
+            descendant.CanQuery = true
+            descendant.CastShadow = true
+        end
+    end
+    return true
+end
+
+local function addAssetOrPlaceholder(assetParent, placeholderParent, name, position, size)
+    local asset = cloneImportedAsset(name)
+    if asset then
+        asset.Parent = assetParent
+        if fitAndPlaceAsset(asset, position, size) then
+            return asset
+        end
+        asset:Destroy()
+    end
+    addAssetPlaceholder(placeholderParent, name, position, size)
+    return nil
+end
+
 function RuntimeBuilder.build(config)
     local old = workspace:FindFirstChild(config.RuntimeName)
     if old then
@@ -232,13 +297,17 @@ function RuntimeBuilder.build(config)
     killPlane.Transparency = 1
     killPlane.CanCollide = false
 
+    local assets = Instance.new("Folder")
+    assets.Name = "ThrixelAssets"
+    assets.Parent = runtime
+
     local placeholders = Instance.new("Folder")
     placeholders.Name = "ThrixelAssetPlaceholders"
     placeholders.Parent = runtime
-    addAssetPlaceholder(placeholders, "EmergencyPowerCellCarrier", Vector3.new(-10, 19, 4), Vector3.new(3, 4, 2))
-    addAssetPlaceholder(placeholders, "CargoDrone", Vector3.new(50, 26, 63), Vector3.new(8, 3, 8))
-    addAssetPlaceholder(placeholders, "FreightGantry", Vector3.new(70, 34, 30), Vector3.new(10, 7, 4))
-    addAssetPlaceholder(placeholders, "DeliveryTerminal", Vector3.new(-47, 30, 14), Vector3.new(5, 5, 3))
+    addAssetOrPlaceholder(assets, placeholders, "EmergencyPowerCellCarrier", Vector3.new(-10, 19, 4), Vector3.new(3, 4, 2))
+    addAssetOrPlaceholder(assets, placeholders, "CargoDrone", Vector3.new(50, 26, 63), Vector3.new(8, 3, 8))
+    addAssetOrPlaceholder(assets, placeholders, "FreightGantry", Vector3.new(70, 34, 30), Vector3.new(10, 7, 4))
+    addAssetOrPlaceholder(assets, placeholders, "DeliveryTerminal", Vector3.new(-47, 30, 14), Vector3.new(5, 5, 3))
 
     Lighting.ClockTime = 18.4
     Lighting.Brightness = 2.2

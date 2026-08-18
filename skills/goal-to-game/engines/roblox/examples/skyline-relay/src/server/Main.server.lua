@@ -27,6 +27,69 @@ retry.Parent = stateRoot
 local runtime, touchZones, killPlane, spawn = RuntimeBuilder.build(Config)
 local sessions = {}
 
+local function getPivot(object)
+    if object:IsA("Model") then
+        return object:GetPivot()
+    elseif object:IsA("BasePart") then
+        return object.CFrame
+    end
+    return nil
+end
+
+local function setPivot(object, cframe)
+    if object:IsA("Model") then
+        object:PivotTo(cframe)
+    elseif object:IsA("BasePart") then
+        object.CFrame = cframe
+    end
+end
+
+local animatedAssets = {}
+local runtimeAssets = runtime:FindFirstChild("ThrixelAssets")
+local drone = runtimeAssets and runtimeAssets:FindFirstChild("CargoDrone")
+if drone then
+    for index, rotorName in { "Rotor_FL", "Rotor_FR", "Rotor_RL", "Rotor_RR" } do
+        local rotor = drone:FindFirstChild(rotorName, true)
+        local pivot = rotor and getPivot(rotor)
+        if pivot then
+            table.insert(animatedAssets, { object = rotor, pivot = pivot, kind = "Rotor", phase = index * 0.35 })
+            rotor:SetAttribute("GoalToGameMovingPart", true)
+        end
+    end
+end
+
+local gantry = runtimeAssets and runtimeAssets:FindFirstChild("FreightGantry")
+if gantry then
+    for _, spec in {
+        { name = "Trolley", kind = "Trolley" },
+        { name = "Hoist", kind = "Hoist" },
+    } do
+        local object = gantry:FindFirstChild(spec.name, true)
+        local pivot = object and getPivot(object)
+        if pivot then
+            table.insert(animatedAssets, { object = object, pivot = pivot, kind = spec.kind, phase = 0 })
+            object:SetAttribute("GoalToGameMovingPart", true)
+        end
+    end
+end
+
+local animationElapsed = 0
+RunService.Heartbeat:Connect(function(deltaTime)
+    animationElapsed += deltaTime
+    local elapsed = animationElapsed
+    for _, animation in animatedAssets do
+        if animation.object.Parent then
+            if animation.kind == "Rotor" then
+                setPivot(animation.object, animation.pivot * CFrame.Angles(0, elapsed * 8 + animation.phase, 0))
+            elseif animation.kind == "Trolley" then
+                setPivot(animation.object, animation.pivot * CFrame.new(math.sin(elapsed * 0.8) * 2, 0, 0))
+            elseif animation.kind == "Hoist" then
+                setPivot(animation.object, animation.pivot * CFrame.new(0, math.sin(elapsed * 0.8) * 0.8, 0))
+            end
+        end
+    end
+end)
+
 local function stateFor(player)
     local state = playerStates:FindFirstChild(tostring(player.UserId))
     if state then
@@ -95,9 +158,52 @@ local function attachCargo(character)
         return
     end
 
+    local assetLibrary = workspace:FindFirstChild("ThrixelAssets")
+    local assetSource = assetLibrary and assetLibrary:FindFirstChild("EmergencyPowerCellCarrier")
+    if assetSource and (assetSource:IsA("Model") or assetSource:IsA("BasePart")) then
+        local cargo = Instance.new("Model")
+        if assetSource:IsA("Model") then
+            cargo:Destroy()
+            cargo = assetSource:Clone()
+        elseif assetSource:IsA("BasePart") then
+            assetSource:Clone().Parent = cargo
+        end
+        cargo.Name = "EmergencyPowerCell"
+        cargo:SetAttribute("GameplayCargo", true)
+        cargo:SetAttribute("GoalToGameAsset", true)
+        cargo:SetAttribute("ThrixelAssetName", "EmergencyPowerCellCarrier")
+        cargo.Parent = character
+
+        if cargo:FindFirstChildWhichIsA("BasePart", true) then
+            local _, size = cargo:GetBoundingBox()
+            local scale = math.min(2.2 / size.X, 2.8 / size.Y, 1.1 / size.Z)
+            cargo:ScaleTo(cargo:GetScale() * scale)
+            local boundsCFrame = cargo:GetBoundingBox()
+            local target = root.CFrame * CFrame.new(0, 0.35, 1.25)
+            local boundsFromPivot = cargo:GetPivot():ToObjectSpace(boundsCFrame)
+            cargo:PivotTo(target * boundsFromPivot:Inverse())
+            for _, descendant in cargo:GetDescendants() do
+                if descendant:IsA("BasePart") then
+                    descendant.Anchored = false
+                    descendant.CanCollide = false
+                    descendant.CanTouch = false
+                    descendant.CanQuery = false
+                    descendant.Massless = true
+                    local weld = Instance.new("WeldConstraint")
+                    weld.Part0 = root
+                    weld.Part1 = descendant
+                    weld.Parent = descendant
+                end
+            end
+            return
+        end
+        cargo:Destroy()
+    end
+
     local cargo = Instance.new("Model")
     cargo.Name = "EmergencyPowerCell"
     cargo:SetAttribute("GameplayCargo", true)
+    cargo:SetAttribute("GoalToGamePlaceholder", true)
     cargo.Parent = character
 
     local function cargoPart(name, size, offset, color, material)

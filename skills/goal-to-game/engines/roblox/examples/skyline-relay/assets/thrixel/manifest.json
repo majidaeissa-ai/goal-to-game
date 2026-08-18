@@ -1,0 +1,52 @@
+{
+  "schema": "goal-to-game-thrixel-assets-v1",
+  "project": {
+    "name": "Skyline Relay",
+    "id": "b8ae85a7-2f87-458b-950b-3c6c90eeb2d7"
+  },
+  "generatedDate": "2026-08-18",
+  "thrixelMcpVersion": "1.1.8",
+  "assets": [
+    {
+      "robloxRootName": "EmergencyPowerCellCarrier",
+      "file": "emergency-power-cell-carrier.glb",
+      "submissionId": "2c5067d1-dc3d-4414-ba69-92cb3a3d9d84",
+      "effectiveTriangles": 6564,
+      "movingGroups": [],
+      "bytes": 11164972,
+      "sha256": "d66a4128f84557f70c3ba4fcfedc7d5f51edb374e56cfa0ff42228b9c2fa6ff8"
+    },
+    {
+      "robloxRootName": "CargoDrone",
+      "file": "cargo-drone.glb",
+      "submissionId": "c7c8f35d-1441-43e0-b9d0-3e879787041a",
+      "effectiveTriangles": 19258,
+      "movingGroups": ["Rotor_FL", "Rotor_FR", "Rotor_RL", "Rotor_RR"],
+      "bytes": 10899880,
+      "sha256": "1d0b1cd03dda8566f5aca217633b1f0e527d4bb303756191c5e2df2986a06282"
+    },
+    {
+      "robloxRootName": "FreightGantry",
+      "file": "freight-gantry.glb",
+      "submissionId": "a2118763-c3f2-4a1c-9c8d-84bbb712293f",
+      "effectiveTriangles": 19320,
+      "movingGroups": ["Trolley", "Hoist"],
+      "bytes": 11315956,
+      "sha256": "34d2392d78913fbb158aec12af194d36319be63546fba6172b9d2f649a3af645"
+    },
+    {
+      "robloxRootName": "DeliveryTerminal",
+      "file": "delivery-terminal.glb",
+      "submissionId": "cde1e5b3-a866-4f02-a344-bd6fa6ae0cd0",
+      "effectiveTriangles": 6814,
+      "movingGroups": [],
+      "bytes": 10151244,
+      "sha256": "74aabca687853eaa26e0471a5f96f24601bc49fbdaa9c655d366565d7e484206"
+    }
+  ],
+  "validation": {
+    "validator": "Khronos glTF Validator",
+    "errorsPerFile": 0,
+    "warningsPerFile": 0
+  }
+}
