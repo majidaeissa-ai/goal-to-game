@@ -1,0 +1,30 @@
+{
+  "schema": "goal-to-game-roblox-final-submission-v1",
+  "studioVersion": "PENDING_REAL_RUN",
+  "rojoVersion": "PENDING_REAL_RUN",
+  "pythonVersion": "PENDING_REAL_RUN",
+  "games": [
+    {
+      "name": "Signal Below",
+      "genre": "exploration-puzzle",
+      "playableUrl": "PENDING",
+      "videoUrl": "PENDING",
+      "movingPartEvidence": "evidence/.../captures/gameplay.png",
+      "performance": {
+        "desktop": {"averageFps": null, "sampleSeconds": null},
+        "mobileViewport": {"averageFps": null, "sampleSeconds": null, "viewport": null}
+      }
+    },
+    {
+      "name": "Skyline Relay",
+      "genre": "time-trial-delivery",
+      "playableUrl": "PENDING",
+      "videoUrl": "PENDING",
+      "movingPartEvidence": null,
+      "performance": {
+        "desktop": {"averageFps": null, "sampleSeconds": null},
+        "mobileViewport": {"averageFps": null, "sampleSeconds": null, "viewport": null}
+      }
+    }
+  ]
+}
