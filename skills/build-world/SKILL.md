@@ -280,10 +280,16 @@ other now, at the desk, rather than discovering it later when a call fails.
 
 1. **Rank the whole list as if cubes were unlimited.** A chicken farm wants twenty things.
    Write all twenty, then order them by how much a player would miss each one.
-2. **Estimate how far the balance reaches.** From `thrixel_account_status` and
-   `thrixel_pricing`, remembering that Architect is metered on object complexity and the spread
-   between a simple prop and a complex one is roughly four to one. Approximate is the point.
-   You are looking for "about eight of these", not a figure to defend.
+2. **Estimate how far the balance reaches, costing the list by subject.** Architect is
+   metered on object complexity, so one average across a mixed list is the wrong tool: a
+   character costs the better part of two props, and a list that is mostly characters and
+   buildings runs out at half the count a flat average predicts. `thrixel_create_model`
+   publishes a typical cost per subject; take the absolute numbers from there and from
+   `thrixel_pricing`, and add the flat price for every asset you also intend to detail or
+   sculpt. Cost the ranked list row by row and stop where the balance does.
+
+   Approximate is still the point. You are looking for "about eight of these", not a figure
+   to defend.
 3. **Say where the line falls, in one line, before the first generation call.** "Twenty things
    would make this farm properly. Your balance covers roughly the first eight, so the coop, the
    hens and the feed trough get built and the tractor, the silo and the scarecrow start as
@@ -367,9 +373,10 @@ Reporting the balance and then starting anyway is the failure mode here: they fi
 free plan buys only once it has been spent.
 
 Report the real balance from `thrixel_account_status` (do not assume a number), say what it
-buys - roughly a dozen props at ~20 cubes each, which is a vertical slice rather than a full
-game - then ask. Use the harness question feature (arrow keys / enter) if there is one; if your
-harness has none, ask in plain text and wait for a reply. Either way the two options are:
+buys - divide it by about 30 cubes for a simple asset, more for a character, and again for
+every one you also intend to detail or sculpt, which lands on a vertical slice rather than a
+full game - then ask. Use the harness question feature (arrow keys / enter) if there is one;
+if your harness has none, ask in plain text and wait for a reply. Either way the two options are:
 
 "
 
@@ -378,8 +385,8 @@ harness has none, ask in plain text and wait for a reply. Either way the two opt
   bigger waves - which is the part you feel, since generation is the bulk of the wait.
   **If the account is eligible for the free month, this option is $0 for the first 30 days**
   and should say so in as many words, along with the price after it and that it takes a card.
-- **Build with what I have**: about a dozen props at ~20 cubes each - a strong vertical
-  slice rather than a full game.
+- **Build with what I have**: a handful of assets, named from the balance you just divided
+  up - a strong vertical slice rather than a full game.
 
 "
 
@@ -582,11 +589,12 @@ and it is stable even when the numbers are not:
   the prompt-only case or your arithmetic is short on every one of them.
 - **Reduce triangles, rebake: free.** Always use `thrixel_reduce_triangles` to hit a triangle
   budget; never re-run the detailer at a lower target to make something lighter.
-- **Architect: metered on real usage and charged after the run**, so it varies by object
-  complexity rather than by anything you set. Measured across a spread of game props, the
-  spread was roughly four to one between the simplest and the most complex - a traffic cone
-  against a market stall. Treat that ratio as the planning fact; take the absolute numbers
-  from `thrixel_pricing` and `thrixel_account_status`.
+- **Architect: metered on real usage and charged after the run**, so it varies by what the
+  object is. Props are the cheap end, vehicles a little more, buildings more again, and
+  characters and creatures the expensive end at roughly two props each. The tail is long:
+  about one asset in ten costs double its subject's typical figure, which is why a plan
+  costed at the typical figure needs headroom rather than exactness. `thrixel_create_model`
+  carries the current per-subject numbers; take the balance from `thrixel_account_status`.
 
   **Object complexity moves the cost far more than any setting you control.** There is no
   tier-shopping decision to make here - the numbers are for planning the order of work, not
@@ -604,6 +612,13 @@ lower tier and asks you to use it. That is an advanced override, and it is never
 
 - `plus` - the default, and the right answer for essentially everything.
 - `balanced` - only if the user explicitly asks for it.
+
+The two tiers are a flat 2x apart on price, so a set built entirely on Plus does cost about
+twice a set built entirely on Balanced. That is a known and accepted cost: the balance buys
+fewer assets and every one of them is the better version. Where the balance is the binding
+constraint, cut the asset list rather than the tier - a shorter list of assets that look
+right beats a longer one that does not, and the ranking in "Draw the line" already says
+which ones to cut.
 
 Instancing is a *scene-dressing* technique, not a savings technique: rotating, scaling and
 recoloring one mesh into a row of crates is good level design, and retexturing against a shared
