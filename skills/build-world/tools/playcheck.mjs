@@ -26,7 +26,7 @@
  *   fits           no horizontal overflow, canvas fills the screen, and the
  *                  drawing buffer is not asking a phone GPU for desktop pixels
  *
- * It also LEAVES THE COVER BEHIND. The browser is already open, the game is
+ * It also LEAVES THE COVER BEHIND (the preview CLIP is record.mjs's job). The browser is already open, the game is
  * already running and already being driven, so the same session writes
  * cover.png into the bundle - the still that listings show. It is never
  * written over one the author supplied, and not written at all if the checks
@@ -35,27 +35,18 @@
  *
  *   node tools/playcheck.mjs ./dist
  *   node tools/playcheck.mjs https://slug.thrixel.world     # after publishing
- *   node tools/playcheck.mjs ./dist --shot=check.png --keep-serving
+ *   node tools/playcheck.mjs ./dist --shot=check.png
+ *   node tools/serve.mjs ./dist --lan                     # to PLAY it, see serve.mjs
  *   node tools/playcheck.mjs ./dist --no-capture            # skip the cover
  *
  * Exit codes: 0 pass, 1 the bundle is broken, 2 could not check (no browser).
  * Treat 2 as "unknown", never as "fine".
  */
 
-import { createServer } from 'node:http';
-import { mkdir, readFile, stat } from 'node:fs/promises';
-import { extname, join, resolve, sep } from 'node:path';
-import { homedir } from 'node:os';
-import { spawn } from 'node:child_process';
+import { stat } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 
-const TYPES = {
-  '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript',
-  '.css': 'text/css', '.json': 'application/json', '.wasm': 'application/wasm',
-  '.glb': 'model/gltf-binary', '.gltf': 'model/gltf+json', '.png': 'image/png',
-  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp',
-  '.svg': 'image/svg+xml', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg',
-  '.wav': 'audio/wav', '.woff2': 'font/woff2', '.ttf': 'font/ttf',
-};
+import { diffPct, frameStats, loadChromium, serve } from './lib/headless.mjs';
 
 const args = process.argv.slice(2);
 const target = args.find((a) => !a.startsWith('--'));
@@ -67,83 +58,6 @@ const flag = (n, d = null) => {
 if (!target) {
   console.error('usage: playcheck.mjs <bundle-dir|url> [--shot=out.png] [--port=5599]');
   process.exit(2);
-}
-
-/**
- * Find a browser, and if there is not one, GET one.
- *
- * The self-install is the whole point. An earlier version of this script just
- * exited with "no browser, install one yourself" - and in a real run the agent
- * dutifully ran the check, read that message, published anyway, and told the
- * user the game worked perfectly. A gate with an easy way past it is not a
- * gate; it is a suggestion. So the missing-browser case is fixed rather than
- * reported. It costs one ~130 MB download, once per machine, and it is the
- * difference between a check that runs and a check that gets stepped around.
- */
-async function loadChromium({ allowInstall = true } = {}) {
-  const here = new URL('.', import.meta.url).pathname;
-  const cacheRoot = join(homedir(), '.cache', 'thrixel-playcheck');
-  const candidates = [
-    'playwright', 'playwright-core',
-    // The three.js kit installs its own; borrow it rather than duplicating.
-    resolve(here, '../engines/threejs/node_modules/playwright/index.mjs'),
-    resolve(here, '../engines/threejs/node_modules/playwright/index.js'),
-    join(cacheRoot, 'node_modules', 'playwright', 'index.mjs'),
-    join(cacheRoot, 'node_modules', 'playwright', 'index.js'),
-  ];
-  for (const mod of candidates) {
-    try {
-      const { chromium } = await import(mod);
-      if (chromium) return chromium;
-    } catch { /* keep looking */ }
-  }
-  if (!allowInstall) return null;
-
-  console.error('playcheck: no headless browser found. Installing one now (~130 MB, once');
-  console.error(`playcheck: per machine, into ${cacheRoot}). This is not optional -`);
-  console.error('playcheck: a bundle nobody has opened is a bundle nobody has checked.');
-  try {
-    await mkdir(cacheRoot, { recursive: true });
-    const run = (cmd, cmdArgs) => new Promise((ok) => {
-      const p = spawn(cmd, cmdArgs, { cwd: cacheRoot, stdio: 'inherit', shell: false });
-      p.on('close', (code) => ok(code));
-      p.on('error', () => ok(-1));
-    });
-    if (await run('npm', ['install', '--no-audit', '--no-fund', '--loglevel', 'error', 'playwright']) !== 0) return null;
-    // The npm package does not bring the browser binary with it.
-    if (await run('npx', ['--yes', 'playwright', 'install', 'chromium']) !== 0) return null;
-    for (const mod of [join(cacheRoot, 'node_modules', 'playwright', 'index.mjs'),
-                       join(cacheRoot, 'node_modules', 'playwright', 'index.js')]) {
-      try {
-        const { chromium } = await import(mod);
-        if (chromium) return chromium;
-      } catch { /* fall through */ }
-    }
-  } catch { /* fall through to the null return */ }
-  return null;
-}
-
-/** Static file server with no dependencies. Refuses to serve outside the root. */
-function serve(root, port) {
-  const server = createServer(async (req, res) => {
-    const clean = decodeURIComponent(req.url.split('?')[0]);
-    let file = resolve(join(root, clean === '/' ? '/index.html' : clean));
-    if (!file.startsWith(resolve(root) + sep) && file !== resolve(root)) {
-      res.writeHead(403).end('forbidden');
-      return;
-    }
-    try {
-      if ((await stat(file)).isDirectory()) file = join(file, 'index.html');
-      const body = await readFile(file);
-      res.writeHead(200, { 'content-type': TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream' });
-      res.end(body);
-    } catch {
-      server.missing.push(clean);
-      res.writeHead(404).end('not found');
-    }
-  });
-  server.missing = [];
-  return new Promise((ok) => server.listen(port, '127.0.0.1', () => ok(server)));
 }
 
 const chromium = await loadChromium({ allowInstall: flag('no-install') !== true });
@@ -174,21 +88,6 @@ const browser = await chromium.launch({
   headless: true,
   args: ['--ignore-gpu-blocklist', '--hide-scrollbars', '--mute-audio', '--enable-gpu-rasterization'],
 });
-
-/** Mean and variance of a sampled frame - a blank or flat frame gives ~0 std. */
-function frameStats(buf) {
-  let n = 0, sum = 0, sumSq = 0;
-  for (let i = 0; i < buf.length; i += 4096) {
-    const v = buf[i]; sum += v; sumSq += v * v; n++;
-  }
-  const mean = sum / n;
-  return { mean: +mean.toFixed(1), std: +Math.sqrt(Math.max(0, sumSq / n - mean * mean)).toFixed(2) };
-}
-const diffPct = (a, b) => {
-  let n = 0, t = 0;
-  for (let i = 0; i < a.length && i < b.length; i += 512) { t++; if (Math.abs(a[i] - b[i]) > 8) n++; }
-  return +(100 * n / t).toFixed(2);
-};
 
 async function run(label, opts) {
   const page = await browser.newPage(opts);
@@ -266,16 +165,13 @@ async function run(label, opts) {
 // root), which is why it can be produced here: this process already has a
 // browser open with the game running in it.
 //
-// WITHDRAWN: this also recorded a preview.webm, a five-second silent clip the
-// listings played on hover. The idea is sound and the plumbing was fine; the
-// clips were not. The input loop below drives WASD and Space, so a world that
-// answers to clicks or drags recorded five motionless seconds and shipped a
-// 2 MB image pretending to be a video - worse than no clip, because the card
-// then promises something that is not there. Restoring it needs three things
-// first: probe which inputs actually move the picture (playcheck already
-// measures exactly that, as respondedPct, and capture never read it), treat
-// "no input at all" as a candidate since many scenes animate on their own,
-// and refuse to ship a clip whose frames do not change.
+// NOT THE PREVIEW CLIP. That is record.mjs, and the split is deliberate: this
+// file drives WASD and Space blind, which is fine for a still - it gets the
+// shot past a title screen - and was a disaster for a clip. An earlier version
+// recorded preview.webm here, and a world that answered to clicks shipped five
+// motionless seconds as a 2 MB video. A clip needs somebody who knows the
+// game's controls to direct it; record.mjs takes that as a storyboard and
+// refuses a clip whose frames do not change.
 //
 // Capture happens in its own context rather than piggy-backing on a check run:
 // the checks want a clean, undisturbed first paint, and this context is scaled

@@ -34,8 +34,9 @@ the ranked list before generating anything (see "Draw the line through the list"
 without waiting. It is what keeps the end of the build from being a surprise.
 
 If you are about to call `thrixel_create_model` or `thrixel_sculpt_model` on a free account and
-have not asked HARD STOP 1, or about to give a `localhost:` address and have not asked HARD
-STOP 2, ask now.
+have not asked HARD STOP 1, ask now. If you are about to hand over a running game and have not
+asked HARD STOP 2, the question goes in the same message as the address - see HARD STOP 2 for
+the shape.
 
 # Before anything else - update this skill
 
@@ -153,7 +154,17 @@ link for my racing game?", "take the golf one down", "rename it", "hide it from
 the directory"). One or two tool calls and an answer. Go straight to **Managing
 published games**. Do not read the rest of this file.
 
-Jobs 2 and 3 need no Thrixel plan, no cubes and no account balance - publishing is
+**4. Run it, or record it** ("run my game", "let me play it", "make a preview video
+for it"). Running: serve the assembled bundle with `tools/serve.mjs` and hand over
+the address, exactly as HARD STOP 2 describes, without the publish question if the
+game is already published. A preview: go to **Record the preview** and hand over the
+file and its frames; that is the whole job. Publishing is a separate decision, and
+the clip only reaches the card if they choose to republish (same `game_id`) - say so
+in one line and do not do it unasked. A published game can be recorded from its
+address too (`record.mjs https://<slug>.thrixel.world`), no folder needed. Neither
+job touches anything else in this file.
+
+Jobs 2 to 4 need no Thrixel plan, no cubes and no account balance - publishing is
 free. The only requirement is a signed-in account, which the MCP server handles;
 if it is not signed in, the tool says so.
 
@@ -468,8 +479,9 @@ not a quota" above. Past that point further calls only return failures.
 have, write the logic against the whole list, and make it run. This is the ordinary end of a
 build and it goes through the ordinary route: playcheck, then HARD STOP 2, then the link.
 
-- **three.js**: the published link is how they see it. Capture frames to show alongside it.
-- **Unity and Roblox**: make sure the scene opens and plays, and say exactly what to press.
+- **three.js and Unity WebGL**: serve it and hand them the address with the controls, as
+  HARD STOP 2 says. Capture frames to show alongside it.
+- **Roblox**: make sure the place opens and plays in Studio, and say exactly what to press.
 
 Then say what is there in one line: "here is the course with the clubhouse, four holes and the
 windmill - it runs and you can play it now."
@@ -969,25 +981,48 @@ with nothing to install. Publishing is free and does not consume cubes.
 user asked you to publish a folder they already have, they have already decided; skip to
 "Publishing a game you did not just build".
 
-**HARD STOP 2: the first build that is playable end to end, stop and ask.** Not a later
-"finish line" the user has to declare, and not after one more round of polish. The first
-time the assembled bundle passes playcheck, that is the moment.
+**HARD STOP 2: the first build that is playable end to end, put it in front of them, then
+ask.** Not a later "finish line" the user has to declare, and not after one more round of
+polish. The first time the assembled bundle passes playcheck, that is the moment.
 
-**Do not hand them a localhost URL as the way they see their game.** A dev-server address
-dies with the terminal, does not open on their phone, and is a different environment from
-the one the game ends up in: same-origin, absolute asset paths, a CDN. "Worked locally,
-black screen once published" is a real failure mode, not a hypothetical one. The published
-link is the first address a human should see.
+**Get it running before you ask anything.** Nobody can answer "want this published?" about a
+game they have not touched, and a message that ends in that question with no address in it
+reads as "I built something, trust me". So, in this order:
 
-Ask exactly this, once:
+1. Serve the assembled bundle, in the background so your session carries on:
 
-> It's playable. Want me to publish it? You get a link anyone you send it to can open in a
+   ```
+   node <skill>/tools/serve.mjs <the bundle directory> --lan
+   ```
+
+   It prints two addresses: one for this machine, one a phone on the same Wi-Fi can open.
+   **The assembled bundle, not the dev server.** `npm run dev` is for iterating; it resolves
+   bare imports and forgives a missing asset folder, and a static host does neither. What
+   they play through serve.mjs is byte for byte what gets published, so "worked locally,
+   black screen once published" cannot open up between the two - and serve.mjs prints every
+   404 as it happens, which is that black screen caught early.
+2. Hand it over with the controls in the same breath - the line you will pass as `controls`
+   at publish time, so say what you actually wired up.
+3. Then the publish question, in that same message, once:
+
+> It's running: http://127.0.0.1:5590/ - on your phone, same Wi-Fi: http://192.168.1.20:5590/.
+> WASD to move, Space to plate, Esc to pause. Have a go.
+>
+> When you're happy with it, say publish: you get a link anyone you send it to can open in a
 > browser, phone included, and it stays the same link every time I update it. Free, no cubes.
 
-- **Yes** -> publish that same bundle and give them the public URL as the first line of
-  your reply. Every later change republishes to the same link.
-- **No** -> serve it locally so they can still play it, say the offer stands whenever they
-  want it, and do not raise it again this session unless they bring it up.
+- **Yes** -> record the preview clip (next section: thirty seconds, into the same bundle),
+  then publish that bundle and give them the public URL as the first line of your reply.
+  Every later change republishes to the same link.
+- **Changes first** -> keep the server up. A rebuild is picked up on their next refresh, so
+  every iteration is "rebuilt, refresh and try it" and never a new address. Take it through
+  playcheck again before the publish that follows.
+- **No** -> the game is already in front of them; say the offer stands whenever they want it,
+  and do not raise it again this session unless they bring it up.
+
+The local address dies with your session and never reaches anybody else, which is exactly
+why it is the test bench and the published link is the address they keep. If it stops
+answering, "run it again" is one command; say so if they ask.
 
 If they ask what publishing means before answering, lead with the two facts that matter:
 the game becomes playable by anyone who has the link, at a random `name.thrixel.world`
@@ -1043,8 +1078,13 @@ shippable form first:
    `playcheck` fills it: it screenshots the running game partway through its own
    checks, and only when those checks passed. Anything you put there wins over that,
    so drop in a better frame whenever you have one.
-4. **Serve the assembled bundle locally** and confirm the game loads from THOSE
-   files. Any static file server will do. This catches a missing asset directory in
+4. **Preview clip.** `preview.webm` at the bundle root: 20-30 seconds of the game
+   being played, which the card plays on hover and the world's page shows in front
+   of the game until the visitor presses Play. You record it from a storyboard you
+   write - see "Record the preview" below. It comes AFTER playcheck, because a clip
+   of a broken game advertises a broken game.
+5. **Serve the assembled bundle locally** and confirm the game loads from THOSE
+   files: `node <skill>/tools/serve.mjs <bundle>`, which also lists every 404. This catches a missing asset directory in
    seconds, and it is the difference between publishing a game and publishing a
    black screen.
 
@@ -1122,6 +1162,76 @@ unverified and let the user decide.
 
 For a three.js kit game, `tools/mobilecheck.mjs` goes deeper on the phone side
 (it drives the kit's own input layer and reports the frame rate); run both.
+
+## Record the preview - the clip a stranger watches before they press Play
+
+**After playcheck passes and before you publish: every first publish, and every
+republish that changed how the game looks or plays.** It is the most watched thing
+about the world - the card plays it on hover, and the world's page shows it in
+front of the game until the visitor presses Play.
+
+You write the storyboard, because you are the only one who can. A script that
+pressed WASD blind produced motionless clips of every game that answered to other
+keys, and that is why this feature was once removed. You know which key opens the
+door, when the boss appears, and where the camera should be when it does.
+
+1. **Decide the three beats.** What does this game look like at its best? Usually:
+   the opening view (2-4 s, no input, let it breathe), the core verb in action
+   (moving, shooting, plating, building; 10-15 s), and one moment that is
+   particular to THIS game (the centrifuge spinning up, night falling, the combo
+   landing; 5-10 s). 20-30 seconds in total. Never over 45.
+2. **Write it as a storyboard JSON**, in viewport pixels of a 960x540 frame:
+
+   ```json
+   { "steps": [
+     { "note": "opening view, let the scene settle" }, { "wait": 3000 },
+     { "note": "walk into the kitchen, look around" },
+     { "press": "KeyW", "hold": 2500 }, { "move": [700, 270], "ms": 800 },
+     { "note": "plate a dish" }, { "press": "Space" }, { "wait": 1500 },
+     { "drag": [480, 300, 640, 300], "ms": 600 },
+     { "click": [512, 380] }, { "wait": 2000 }
+   ] }
+   ```
+
+   Steps: `wait` (ms), `press` a key code (add `hold` in ms to keep it down),
+   `down` / `up` for a key held across other steps, `click` `[x, y]` (add `hold`
+   for hold-to-fire, `"button": "right"` for a right-click ability), `move`
+   `[x, y]` with `ms` for mouselook, `drag` `[x0, y0, x1, y1]` with `ms`, `type`
+   text. Steps run one after another, so "shoot while flying" is `down` Space,
+   then the moves, then `up` Space. `note` is for you:
+   say what the beat shows, so the storyboard reads as a shot list. Key codes are
+   DOM codes - `KeyW`, `Space`, `ArrowUp`, `Digit1`, `Equal`. If the game needs a
+   click or a key to start, that is the first step.
+3. **Record it:**
+
+   ```
+   node <skill>/tools/record.mjs <the bundle directory> --storyboard=<file>
+   ```
+
+   It opens the bundle in a real browser, waits for it to boot, runs your steps,
+   and writes `preview.webm` into the bundle root. It also saves a still every
+   1.5 seconds to a folder it names in its report. **Look at those frames.** That
+   is the review: is the camera where you meant, is anything black, does the clip
+   show the game or a menu? The report also names the `renderer`: if it says
+   `software: true`, this machine has no usable GPU for headless Chromium, the
+   game ran at a few frames a second, and the clip is choppy for that reason
+   alone. Tell the user; a re-record on a machine with a GPU fixes it, nothing
+   in the storyboard will.
+4. **It refuses a clip that does not move.** Fewer than half the sampled intervals
+   changing, a page error, or a blank first frame all exit 1 and delete the file.
+   That is the gate that was missing the first time. Fix the storyboard (wrong key?
+   too early? the game wanted a click to start?) and record again. Two or three
+   takes is normal; the first is rarely the keeper.
+5. **Offer the user a say.** "Want the clip to open on the boss instead?" is one
+   sentence, and a re-record is thirty seconds. Anyone who asks for a change to the
+   clip gets it: the storyboard is theirs to direct.
+
+For a folder you did not build, read its controls first - the HUD, the README, or
+ask - before you write a step. A storyboard of guesses is the blind script again.
+
+If it exits **2**, it could not record: no browser, or the storyboard is invalid.
+Publish anyway and say the world has no preview yet - a clip is worth having and
+never worth blocking a publish over. Never publish a clip that was refused.
 
 ## Publish
 
