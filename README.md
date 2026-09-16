@@ -1,23 +1,31 @@
-# Goal to Game
+# Build World
 
-Build beautiful games with high-quality 3D assets using [Thrixel](https://thrixel.com/) and [Claude Code](https://claude.com/claude-code).
+Build interactive 3D worlds with high-quality assets from [Thrixel](https://thrixel.com/) and your AI agent of choice.
 
-Claude Code handles the game logic and scene setup. Thrixel generates, organizes, and manages the 3D assets. Thrixel processes 3D creation in parallel so you can build your scene faster.
+Claude Code (or your preferred agent) handles the logic, interactions, and scene setup. Thrixel generates, organizes, and manages the 3D assets. Save your coding agent tokens and time by using Thrixel to generate 3D assets faster and at higher quality than Claude Code.
 
-Goal to Game currently supports **Unity** and **Three.js**. This page covers **Claude Code**, where every step below is tested.
+Build World currently supports **Three.js**, **Unity**, and **Roblox**. This page covers **Claude Code**, but the workflow works with other coding agents as well.
+
+> Build World was previously called Goal to Game. The name changed because the skill goes beyond games: it can build interactive experiences, simulations, educational experiences, virtual tourism and historical recreations, AR/VR experiences, and more.
+
+## Thrixel inside the Gauntlet Loop
+
+Build World uses a Gauntlet-style iterative workflow for creating interactive 3D worlds. The agent calls Thrixel to generate and refine 3D assets inside the loop. The agent continuously builds, evaluates, and improves the world itself, including its gameplay, interactions, and assets. With Build World, you can vibe out a game or other interactive 3D experience from a single prompt, then keep refining it with follow-up prompts.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/ThatCharlieK/READMEAssets/main/Thrixel-1prompt-to-game-readme.gif" width="600"/>
 </p>
 
+
+
 ## Quick start
 
 Steps 1 and 2 are once per machine. After that, a new game is just step 3.
 
-> Using [Codex](https://thrixel.com/docs/goal-to-game#codex) or
-> [Gemini CLI](https://thrixel.com/docs/goal-to-game#gemini-cli) instead? Each one
+> Using [Codex](https://thrixel.com/docs/build-world#codex) or
+> [Gemini CLI](https://thrixel.com/docs/build-world#gemini-cli) instead? Each one
 > installs Thrixel its own way - the
-> [installation page](https://thrixel.com/docs/goal-to-game) has the steps for both.
+> [installation page](https://thrixel.com/docs/build-world) has the steps for both.
 
 ### 1. Install Claude Code and uv
 
@@ -57,7 +65,7 @@ Same on every platform:
 uvx thrixel-mcp@latest login
 
 # 2. One plugin carries both the skill and the Thrixel connector, for every project.
-claude plugin marketplace add thrixel/goal-to-game
+claude plugin marketplace add thrixel/build-world
 claude plugin install thrixel@thrixel
 ```
 
@@ -89,7 +97,7 @@ The plugin includes both pieces, so your old install is now a duplicate. Remove 
 
 ```bash
 claude mcp remove thrixel
-rm -rf ~/.claude/skills/goal-to-game ~/.claude/skills/thrixel
+rm -rf ~/.claude/skills/build-world ~/.claude/skills/goal-to-game ~/.claude/skills/thrixel
 ```
 
 </details>
@@ -99,7 +107,7 @@ rm -rf ~/.claude/skills/goal-to-game ~/.claude/skills/thrixel
 
 ```powershell
 claude mcp remove thrixel
-Remove-Item -Recurse -Force "$HOME\.claude\skills\goal-to-game","$HOME\.claude\skills\thrixel"
+Remove-Item -Recurse -Force "$HOME\.claude\skills\build-world","$HOME\.claude\skills\goal-to-game","$HOME\.claude\skills\thrixel"
 ```
 
 </details>
@@ -113,15 +121,15 @@ Remove-Item -Recurse -Force "$HOME\.claude\skills\goal-to-game","$HOME\.claude\s
 claude --permission-mode auto
 ```
 
-**Into Claude Code** (not the terminal), start the line with **`/thrixel:goal-to-game`**, then
-describe the game and name the engine (three.js or Unity):
+**Into Claude Code** (not the terminal), start the line with **`/thrixel:build-world`**, then
+describe the game and name the engine (three.js, Unity, or Roblox):
 
 ```text
-/thrixel:goal-to-game build a submarine exploration game in three.js set in a bright, vibrant tropical sea with coral and fish
+/thrixel:build-world build a submarine exploration game in three.js set in a bright, vibrant tropical sea with coral and fish
 ```
 
 > [!TIP]
-> Type `/thr` and Claude completes **`/thrixel:goal-to-game`** for you, so you never type it in
+> Type `/thr` and Claude completes **`/thrixel:build-world`** for you, so you never type it in
 > full. If the completion does not appear, the skill is not installed - go back to step 2.
 
 > We recommend setting /model to Opus 5 or a more capable model, with effort set to high or above.
@@ -132,7 +140,7 @@ change things.
 <details>
 <summary><b>No plugin? Install the <a href="https://code.claude.com/docs/en/skills">skill</a> and the <a href="https://modelcontextprotocol.io">MCP connector</a> separately</b></summary>
 
-Replaces steps 2 and 3 above. Same start command either way: `/thrixel:goal-to-game`.
+Replaces steps 2 and 3 above. Same start command either way: `/thrixel:build-world`.
 
 **2. Connect Thrixel**
 
@@ -147,7 +155,7 @@ uvx thrixel-mcp@latest login
 claude mcp add --scope user thrixel -- uvx thrixel-mcp@latest
 
 # 3. Install the skill. Clone, not download, so it can update itself later.
-git clone https://github.com/thrixel/goal-to-game ~/.claude/skills/thrixel
+git clone https://github.com/thrixel/build-world ~/.claude/skills/thrixel
 ```
 
 </details>
@@ -163,7 +171,7 @@ uvx thrixel-mcp@latest login
 
 claude mcp add --scope user thrixel -- uvx thrixel-mcp@latest
 
-git clone https://github.com/thrixel/goal-to-game "$HOME\.claude\skills\thrixel"
+git clone https://github.com/thrixel/build-world "$HOME\.claude\skills\thrixel"
 ```
 
 </details>
@@ -177,12 +185,20 @@ ls ~/.claude/skills/   # thrixel listed
 
 If either is missing, Claude will build the game without Thrixel and never mention it.
 
+**Cloned before the rename?** `github.com/thrixel/goal-to-game` still redirects here, so an older
+clone keeps working and keeps updating itself. All it leaves behind is the old name, in your folder
+and in `git remote -v`. Point it at the current URL once:
+
+```bash
+git -C ~/.claude/skills/thrixel remote set-url origin https://github.com/thrixel/build-world
+```
+
 **3. Ask for a game**
 
 Identical to step 3 above, same command and all:
 
 ```text
-/thrixel:goal-to-game build a submarine exploration game in three.js set in a bright, vibrant tropical sea with coral and fish
+/thrixel:build-world build a submarine exploration game in three.js set in a bright, vibrant tropical sea with coral and fish
 ```
 
 </details>
@@ -211,7 +227,7 @@ Every asset generated through the Thrixel API is saved to your Thrixel workspace
 
 **Manage and Edit**: Visit [Thrixel Web App](https://thrixel.com/create) to view, manage, and edit your assets. If you make changes in the web app, ask your coding agent to pull the updated versions back into your game.
 
-**Engine Agnostic**: Because your assets are managed in Thrixel rather than tied to one codebase, you can also reuse them across projects and engines. For example, you can prototype in Three.js and later ask your agent to rebuild the game in Unity using the same asset library.
+**Engine Agnostic**: Because your assets are managed in Thrixel rather than tied to one codebase, you can also reuse them across projects and engines. For example, you can prototype in Three.js and later ask your agent to rebuild the game in Unity or Roblox using the same asset library.
 
 **Parallel Processing**: Thrixel can manage and process jobs in parallel. Your coding agent can farm out parallel jobs to Thrixel while building out the logic of the game. Each [plan](https://thrixel.com/create/#upgrade) has a different concurrency limit.
 
